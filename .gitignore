@@ -1,0 +1,30 @@
+# Environment and secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*private*.json
+credentials.json
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.venv/
+venv/
+
+# Node and frontend builds
+node_modules/
+dist/
+.vite/
+coverage/
+
+# ADK runtime data
+.adk/
+
+# Editors and operating systems
+.DS_Store
+.idea/
+.vscode/
