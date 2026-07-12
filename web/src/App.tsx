@@ -2,8 +2,11 @@ import { FormEvent, useEffect, useRef, useState } from "react";
 import Markdown from "react-markdown";
 import {
   getPaymentHandler,
+  isPaymentMethodChangeRequest,
+  isPaymentRequest,
   isPurchaseConfirmation,
   loadPaymentHandlers,
+  shouldAutoLaunchDeferredPayment,
   type PaymentHandlerDescriptor,
   type PaymentSelection,
 } from "./payment-handlers";
@@ -169,7 +172,7 @@ function StructuredContent({
             )
           }
         >
-          Open payment
+          Select payment method
         </button>
       </>
     );
@@ -196,6 +199,8 @@ export function App() {
   const [paymentHandlerStatus, setPaymentHandlerStatus] = useState<"loading" | "ready" | "error">("loading");
   const endRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const checkoutRef = useRef<Checkout | null>(null);
+  const paymentHandlerNamesRef = useRef<string[]>([]);
 
   useEffect(() => endRef.current?.scrollIntoView({ behavior: "smooth" }), [messages, loading]);
   useEffect(() => {
@@ -209,6 +214,7 @@ export function App() {
       })
       .then(async ({ handlers }) => {
         await loadPaymentHandlers(handlers);
+        paymentHandlerNamesRef.current = handlers.map((handler) => handler.name);
         setPaymentHandlerStatus("ready");
       })
       .catch((error) => {
@@ -217,7 +223,7 @@ export function App() {
       });
   }, []);
 
-  async function send(text: string) {
+  async function send(text: string, options: { paymentAlreadyLaunched?: boolean } = {}) {
     const clean = text.trim();
     if (!clean || loading) return;
     setInput("");
@@ -232,16 +238,24 @@ export function App() {
       const body = await response.json() as { session_id?: string; text?: string; ui?: UiPayload; detail?: string };
       if (!response.ok) throw new Error(body.detail ?? `Agent returned ${response.status}`);
       setSessionId(body.session_id ?? null);
+      if (body.ui && "checkout" in body.ui) checkoutRef.current = body.ui.checkout;
       const paymentAction = body.ui?.kind === "payment_action" ? body.ui : null;
+      const allowDeferredAutoLaunch = shouldAutoLaunchDeferredPayment(
+        window.matchMedia("(pointer: coarse)").matches,
+      );
       const canLaunchAutomatically = Boolean(
         paymentAction &&
+        !options.paymentAlreadyLaunched &&
+        allowDeferredAutoLaunch &&
         paymentHandlerStatus === "ready" &&
         getPaymentHandler(paymentAction.action.handler) &&
         ["requires_escalation", "ready_for_complete"].includes(
           paymentAction.checkout.status,
         ),
       );
-      const visibleUi = canLaunchAutomatically ? undefined : body.ui;
+      const visibleUi = canLaunchAutomatically || (options.paymentAlreadyLaunched && paymentAction)
+        ? undefined
+        : body.ui;
       setMessages((current) => [...current, {
         id: crypto.randomUUID(),
         role: "assistant",
@@ -310,7 +324,7 @@ export function App() {
         setMessages((current) => [...current, {
           id: crypto.randomUUID(),
           role: "assistant",
-          text: `The browser could not open the payment handler automatically: ${error.message} Use the button below to open it.`,
+          text: `The browser could not open the payment handler automatically: ${error.message} Use the button below to select a payment method.`,
           ui: {
             kind: "payment_action",
             checkout,
@@ -354,6 +368,7 @@ export function App() {
       });
       const body = await response.json() as Checkout & { detail?: string };
       if (!response.ok) throw new Error(body.detail ?? `Payment completion returned ${response.status}`);
+      checkoutRef.current = body;
       setPendingPaymentReview(null);
       setMessages((current) => [...current, {
         id: crypto.randomUUID(),
@@ -382,6 +397,24 @@ export function App() {
       isPurchaseConfirmation(clean)
     ) {
       void completePaymentAndPurchase(pendingPaymentReview, clean);
+      return;
+    }
+    const checkout = pendingPaymentReview?.checkout ?? checkoutRef.current;
+    const handlerName =
+      pendingPaymentReview?.handler ?? paymentHandlerNamesRef.current[0];
+    const changePaymentMethod = isPaymentMethodChangeRequest(clean);
+    if (
+      clean &&
+      checkout &&
+      handlerName &&
+      (changePaymentMethod || isPaymentRequest(clean))
+    ) {
+      const launched = launchPayment(
+        checkout,
+        handlerName,
+        changePaymentMethod ? "CHANGE_PAYMENT_METHOD" : "START_FLOW",
+      );
+      void send(clean, { paymentAlreadyLaunched: launched });
       return;
     }
     void send(clean);

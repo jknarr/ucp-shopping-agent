@@ -1,5 +1,43 @@
 import { strict as assert } from "node:assert";
-import { isPurchaseConfirmation } from "../src/payment-handlers.ts";
+import {
+  isPaymentMethodChangeRequest,
+  isPaymentRequest,
+  isPurchaseConfirmation,
+  shouldAutoLaunchDeferredPayment,
+} from "../src/payment-handlers.ts";
+
+assert.equal(shouldAutoLaunchDeferredPayment(false), true);
+assert.equal(shouldAutoLaunchDeferredPayment(true), false);
+
+for (const request of [
+  "I'm ready to pay",
+  "pay with Paze",
+  "checkout",
+  "no more items",
+  "nothing else",
+  "that's all",
+  "proceed",
+]) {
+  assert.equal(isPaymentRequest(request), true, `expected payment request: ${request}`);
+}
+
+for (const request of [
+  "not ready to pay",
+  "add another item",
+  "I also want to buy the book",
+  "continue shopping",
+  "what is the total?",
+]) {
+  assert.equal(isPaymentRequest(request), false, `expected non-payment request: ${request}`);
+}
+
+for (const request of ["change my card", "use a different card", "select another payment method"]) {
+  assert.equal(
+    isPaymentMethodChangeRequest(request),
+    true,
+    `expected payment-method change: ${request}`,
+  );
+}
 
 for (const confirmation of [
   "I'm ready to complete the purchase",

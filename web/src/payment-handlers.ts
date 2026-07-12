@@ -47,6 +47,34 @@ export function getPaymentHandler(name: string): BrowserPaymentHandler | undefin
   return handlers.get(name);
 }
 
+export function isPaymentMethodChangeRequest(text: string): boolean {
+  const normalized = text.trim().toLowerCase();
+  return (
+    /\b(change|switch|replace|choose|select|pick|use)\b[^.!?]*\b(card|payment method)\b/.test(normalized) ||
+    /\b(another|different|other)\s+(card|payment method)\b/.test(normalized)
+  );
+}
+
+export function isPaymentRequest(text: string): boolean {
+  const normalized = text.trim().toLowerCase();
+  if (
+    /\b(not ready|do not|don't|dont|cancel|stop|wait|hold off|not yet)\b/.test(normalized) ||
+    /\b(add|remove|delete|quantity|qty|replace|another item|also want|buy|get)\b/.test(normalized) ||
+    /\bcontinue shopping\b/.test(normalized)
+  ) {
+    return false;
+  }
+  return (
+    /\b(pay|payment|check\s*out|checkout)\b/.test(normalized) ||
+    /\b(ready|done|finished|all set|no more items|nothing else|that's all|that is all)\b/.test(normalized) ||
+    /^(no|nope|nothing else|that's all|that is all|proceed|continue)( please)?[.!]?$/i.test(normalized)
+  );
+}
+
+export function shouldAutoLaunchDeferredPayment(coarsePointer: boolean): boolean {
+  return !coarsePointer;
+}
+
 export function isPurchaseConfirmation(text: string): boolean {
   const normalized = text.trim().toLowerCase();
   if (
