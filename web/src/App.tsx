@@ -201,6 +201,10 @@ export function App() {
   const inputRef = useRef<HTMLInputElement>(null);
   const checkoutRef = useRef<Checkout | null>(null);
   const paymentHandlerNamesRef = useRef<string[]>([]);
+  const directPaymentLaunchRef = useRef<{
+    text: string;
+    launched: boolean;
+  } | null>(null);
 
   useEffect(() => endRef.current?.scrollIntoView({ behavior: "smooth" }), [messages, loading]);
   useEffect(() => {
@@ -388,6 +392,31 @@ export function App() {
     setLoading(false);
   }
 
+  function launchPaymentFromDirectGesture(text: string): boolean {
+    const clean = text.trim();
+    if (!clean || (pendingPaymentReview && isPurchaseConfirmation(clean))) {
+      return false;
+    }
+    const checkout = pendingPaymentReview?.checkout ?? checkoutRef.current;
+    const handlerName =
+      pendingPaymentReview?.handler ?? paymentHandlerNamesRef.current[0];
+    const changePaymentMethod = isPaymentMethodChangeRequest(clean);
+    if (
+      !checkout ||
+      !handlerName ||
+      (!changePaymentMethod && !isPaymentRequest(clean))
+    ) {
+      return false;
+    }
+    const launched = launchPayment(
+      checkout,
+      handlerName,
+      changePaymentMethod ? "CHANGE_PAYMENT_METHOD" : "START_FLOW",
+    );
+    directPaymentLaunchRef.current = { text: clean, launched };
+    return true;
+  }
+
   function submit(event: FormEvent) {
     event.preventDefault();
     const clean = input.trim();
@@ -397,6 +426,12 @@ export function App() {
       isPurchaseConfirmation(clean)
     ) {
       void completePaymentAndPurchase(pendingPaymentReview, clean);
+      return;
+    }
+    const directLaunch = directPaymentLaunchRef.current;
+    directPaymentLaunchRef.current = null;
+    if (directLaunch?.text === clean) {
+      void send(clean, { paymentAlreadyLaunched: directLaunch.launched });
       return;
     }
     const checkout = pendingPaymentReview?.checkout ?? checkoutRef.current;
@@ -462,8 +497,25 @@ export function App() {
         <div ref={endRef} />
       </main>
       <form onSubmit={submit}>
-        <input ref={inputRef} value={input} onChange={(event) => setInput(event.target.value)} aria-label="Message" disabled={loading} />
-        <button className="send" disabled={loading || !input.trim()}>Send</button>
+        <input
+          ref={inputRef}
+          value={input}
+          onChange={(event) => setInput(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" && !event.repeat) {
+              launchPaymentFromDirectGesture(input);
+            }
+          }}
+          aria-label="Message"
+          disabled={loading}
+        />
+        <button
+          className="send"
+          disabled={loading || !input.trim()}
+          onClick={() => launchPaymentFromDirectGesture(input)}
+        >
+          Send
+        </button>
       </form>
       <footer>Merchant prices and payment state are authoritative. The model never receives payment credentials.</footer>
     </div>
