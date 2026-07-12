@@ -102,12 +102,12 @@ export function isAffirmativeResponse(text: string): boolean {
 
 export function requiresExplicitPaymentButton(
   userAgent: string,
-  coarsePointer: boolean,
+  _coarsePointer: boolean,
 ): boolean {
   const safari =
     /Safari\//i.test(userAgent) &&
     !/(Chrome|Chromium|CriOS|Edg|EdgiOS|OPR|Android)\//i.test(userAgent);
-  return coarsePointer || safari;
+  return safari;
 }
 
 export function shouldAutoLaunchDeferredPayment(coarsePointer: boolean): boolean {
