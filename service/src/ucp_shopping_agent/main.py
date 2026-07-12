@@ -237,9 +237,18 @@ async def chat(request: ChatRequest) -> ChatResponse:
         app_name=APP_NAME, user_id=session_id, session_id=session_id
     )
     ui = session.state.get(UI_STATE) if session else None
+    response_text = "\n".join(text_parts).strip() or "I completed that shopping step."
+    if isinstance(ui, dict) and ui.get("kind") == "payment_action":
+        response_text = (
+            "Please select your desired payment method through the provided interface."
+        )
+    elif isinstance(ui, dict) and ui.get("kind") == "checkout":
+        response_text = (
+            "I've updated your checkout. Would you like to add any other items?"
+        )
     return ChatResponse(
         session_id=session_id,
-        text="\n".join(text_parts).strip() or "I completed that shopping step.",
+        text=response_text,
         ui=ui if isinstance(ui, dict) else None,
     )
 
