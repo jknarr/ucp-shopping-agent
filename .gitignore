@@ -10,6 +10,7 @@ credentials.json
 # Python
 __pycache__/
 *.py[cod]
+*.tsbuildinfo
 .pytest_cache/
 .ruff_cache/
 .venv/
@@ -23,6 +24,7 @@ coverage/
 
 # ADK runtime data
 .adk/
+.python-version
 
 # Editors and operating systems
 .DS_Store

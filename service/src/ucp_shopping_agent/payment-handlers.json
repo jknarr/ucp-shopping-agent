@@ -1,0 +1,20 @@
+{
+  "dev.jknarr.paze_checkout": [
+    {
+      "id": "agent_supported_paze",
+      "label": "Paze",
+      "version": "2026-07-11",
+      "spec": "https://raw.githubusercontent.com/jknarr/paze-ucp-payment-handler/v2026-07-11/spec/2026-07-11/paze-ucp-payment-handler.md",
+      "schema": "https://raw.githubusercontent.com/jknarr/paze-ucp-payment-handler/v2026-07-11/schemas/2026-07-11/handler.schema.json",
+      "available_instruments": [
+        {
+          "type": "paze"
+        }
+      ],
+      "config": {
+        "environment": "sandbox",
+        "module_url": "${PAYMENT_HANDLER_MODULE_URL}"
+      }
+    }
+  ]
+}
