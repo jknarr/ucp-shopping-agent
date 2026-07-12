@@ -267,9 +267,10 @@ export function App() {
               },
             }
           : null);
-      const allowDeferredAutoLaunch = shouldAutoLaunchDeferredPayment(
-        window.matchMedia("(pointer: coarse)").matches,
-      );
+      const coarsePointer = window.matchMedia("(pointer: coarse)").matches;
+      const allowDeferredAutoLaunch =
+        shouldAutoLaunchDeferredPayment(coarsePointer) &&
+        !requiresExplicitPaymentButton(window.navigator.userAgent, coarsePointer);
       const canLaunchAutomatically = Boolean(
         paymentAction &&
         !options.paymentAlreadyLaunched &&

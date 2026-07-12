@@ -59,6 +59,14 @@ for (const response of ["no", "not yet", "yes, add the book", "okay, but change 
 
 assert.equal(shouldAutoLaunchDeferredPayment(false), true);
 assert.equal(shouldAutoLaunchDeferredPayment(true), false);
+assert.equal(
+  shouldAutoLaunchDeferredPayment(false) &&
+    !requiresExplicitPaymentButton(
+      "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 Version/18.5 Safari/605.1.15",
+      false,
+    ),
+  false,
+);
 
 for (const request of [
   "I'm ready to pay",
