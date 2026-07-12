@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Markdown from "react-markdown";
 import {
   getPaymentHandler,
@@ -479,8 +479,7 @@ export function App() {
     return true;
   }
 
-  function submit(event: FormEvent) {
-    event.preventDefault();
+  function submitCurrentInput() {
     const clean = input.trim();
     if (
       clean &&
@@ -568,23 +567,29 @@ export function App() {
         {loading && <div className="message assistant"><div className="avatar">AI</div><div className="bubble typing">Thinking…</div></div>}
         <div ref={endRef} />
       </main>
-      <form onSubmit={submit}>
+      <form onSubmit={(event) => event.preventDefault()}>
         <input
           ref={inputRef}
           value={input}
           onChange={(event) => setInput(event.target.value)}
           onKeyDown={(event) => {
             if (event.key === "Enter" && !event.repeat) {
+              event.preventDefault();
               launchPaymentFromDirectGesture(input);
+              submitCurrentInput();
             }
           }}
           aria-label="Message"
           disabled={loading}
         />
         <button
+          type="button"
           className="send"
           disabled={loading || !input.trim()}
-          onClick={() => launchPaymentFromDirectGesture(input)}
+          onClick={() => {
+            launchPaymentFromDirectGesture(input);
+            submitCurrentInput();
+          }}
         >
           Send
         </button>
