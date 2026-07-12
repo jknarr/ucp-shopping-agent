@@ -14,6 +14,7 @@ import httpx
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from google.adk.runners import Runner
 from google.adk.sessions import InMemorySessionService
 from google.genai import types
@@ -182,10 +183,18 @@ async def payment_handlers() -> dict[str, Any]:
 
 @app.post("/api/chat", response_model=ChatResponse)
 async def chat(request: ChatRequest) -> ChatResponse:
-    if not os.getenv("GOOGLE_API_KEY"):
+    uses_vertex_ai = os.getenv("GOOGLE_GENAI_USE_VERTEXAI", "").lower() in {
+        "1",
+        "true",
+        "yes",
+    }
+    if not os.getenv("GOOGLE_API_KEY") and not uses_vertex_ai:
         raise HTTPException(
             status_code=503,
-            detail="GOOGLE_API_KEY is required to run the Google ADK conversation.",
+            detail=(
+                "Configure GOOGLE_API_KEY or enable Vertex AI with "
+                "GOOGLE_GENAI_USE_VERTEXAI=true."
+            ),
         )
     await merchant_profile()
     session_id = request.session_id or str(uuid.uuid4())
@@ -254,6 +263,14 @@ async def complete_payment(request: PaymentCompletionRequest) -> dict[str, Any]:
             detail=f"Merchant checkout completion returned {completed.status_code}: {completed.text[:400]}",
         )
     return completed.json()
+
+
+web_dist_setting = os.getenv("WEB_DIST_DIR")
+if web_dist_setting:
+    web_dist = Path(web_dist_setting).resolve()
+    if not web_dist.is_dir():
+        raise RuntimeError(f"WEB_DIST_DIR does not exist: {web_dist}")
+    app.mount("/", StaticFiles(directory=web_dist, html=True), name="web")
 
 
 def run() -> None:

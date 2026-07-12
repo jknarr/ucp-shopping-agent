@@ -1,0 +1,10 @@
+.git
+.env
+.env.*
+.adk
+node_modules
+web/node_modules
+web/dist
+service/.venv
+**/__pycache__
+**/*.pyc

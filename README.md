@@ -74,6 +74,30 @@ With the merchant running:
 uv run --project service python scripts/smoke_tools.py
 ```
 
+## Google Cloud Run deployment
+
+The production-shaped demo deploys the React client and Python ADK service as
+one `gemini-agent` Cloud Run service. The multi-stage `Dockerfile` builds the
+web client and packages it with FastAPI; the service scales to zero when idle.
+
+Prerequisites:
+
+- Google Cloud CLI authenticated to `gen-lang-client-0893499492`
+- Cloud Run, Cloud Build, Artifact Registry, and Vertex AI APIs enabled
+- the Cloud Run service account granted the Vertex AI User role
+
+Deploy with:
+
+```bash
+./scripts/deploy-cloud-run.sh
+```
+
+The script configures the deployed merchant and Paze handler URLs, exposes the
+service publicly, limits the demo to one instance so in-memory conversations
+do not split across instances, uses Vertex AI application-default credentials,
+and updates the agent profile with its final Cloud Run URL. Cold starts and
+session loss after scale-to-zero are expected for this demo.
+
 The smoke test covers discovery, filtered catalog search, multi-item checkout,
 handler action selection, checkout cancellation, and creation of a fresh
 checkout after a closed one. It does not invoke Gemini or a payment SDK.
