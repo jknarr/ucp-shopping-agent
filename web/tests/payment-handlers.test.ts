@@ -1,10 +1,37 @@
 import { strict as assert } from "node:assert";
 import {
+  isAffirmativeResponse,
+  isPaymentInvitation,
   isPaymentMethodChangeRequest,
   isPaymentRequest,
   isPurchaseConfirmation,
   shouldAutoLaunchDeferredPayment,
 } from "../src/payment-handlers.ts";
+
+for (const invitation of [
+  "Would you like to proceed to payment?",
+  "Would you like to proceed with payment?",
+  "Are you ready to pay?",
+  "Do you want to continue to checkout?",
+]) {
+  assert.equal(isPaymentInvitation(invitation), true, `expected payment invitation: ${invitation}`);
+}
+
+for (const response of [
+  "yes",
+  "yep",
+  "sure",
+  "okay",
+  "sounds good",
+  "go ahead",
+  "let's do it",
+]) {
+  assert.equal(isAffirmativeResponse(response), true, `expected affirmative response: ${response}`);
+}
+
+for (const response of ["no", "not yet", "yes, add the book", "okay, but change the cart"]) {
+  assert.equal(isAffirmativeResponse(response), false, `expected contextual response: ${response}`);
+}
 
 assert.equal(shouldAutoLaunchDeferredPayment(false), true);
 assert.equal(shouldAutoLaunchDeferredPayment(true), false);

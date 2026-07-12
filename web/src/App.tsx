@@ -2,6 +2,8 @@ import { FormEvent, useEffect, useRef, useState } from "react";
 import Markdown from "react-markdown";
 import {
   getPaymentHandler,
+  isAffirmativeResponse,
+  isPaymentInvitation,
   isPaymentMethodChangeRequest,
   isPaymentRequest,
   isPurchaseConfirmation,
@@ -205,6 +207,7 @@ export function App() {
     text: string;
     launched: boolean;
   } | null>(null);
+  const paymentInvitationPendingRef = useRef(false);
 
   useEffect(() => endRef.current?.scrollIntoView({ behavior: "smooth" }), [messages, loading]);
   useEffect(() => {
@@ -260,10 +263,12 @@ export function App() {
       const visibleUi = canLaunchAutomatically || (options.paymentAlreadyLaunched && paymentAction)
         ? undefined
         : body.ui;
+      const assistantText = body.text ?? (paymentAction ? "Opening the supported payment handler." : "Done.");
+      paymentInvitationPendingRef.current = isPaymentInvitation(assistantText);
       setMessages((current) => [...current, {
         id: crypto.randomUUID(),
         role: "assistant",
-        text: body.text ?? (paymentAction ? "Opening the supported payment handler." : "Done."),
+        text: assistantText,
         ui: visibleUi
       }]);
       if (canLaunchAutomatically && paymentAction) {
@@ -401,10 +406,12 @@ export function App() {
     const handlerName =
       pendingPaymentReview?.handler ?? paymentHandlerNamesRef.current[0];
     const changePaymentMethod = isPaymentMethodChangeRequest(clean);
+    const acceptsPaymentInvitation =
+      paymentInvitationPendingRef.current && isAffirmativeResponse(clean);
     if (
       !checkout ||
       !handlerName ||
-      (!changePaymentMethod && !isPaymentRequest(clean))
+      (!changePaymentMethod && !isPaymentRequest(clean) && !acceptsPaymentInvitation)
     ) {
       return false;
     }
@@ -414,6 +421,7 @@ export function App() {
       changePaymentMethod ? "CHANGE_PAYMENT_METHOD" : "START_FLOW",
     );
     directPaymentLaunchRef.current = { text: clean, launched };
+    if (launched) paymentInvitationPendingRef.current = false;
     return true;
   }
 
@@ -438,17 +446,20 @@ export function App() {
     const handlerName =
       pendingPaymentReview?.handler ?? paymentHandlerNamesRef.current[0];
     const changePaymentMethod = isPaymentMethodChangeRequest(clean);
+    const acceptsPaymentInvitation =
+      paymentInvitationPendingRef.current && isAffirmativeResponse(clean);
     if (
       clean &&
       checkout &&
       handlerName &&
-      (changePaymentMethod || isPaymentRequest(clean))
+      (changePaymentMethod || isPaymentRequest(clean) || acceptsPaymentInvitation)
     ) {
       const launched = launchPayment(
         checkout,
         handlerName,
         changePaymentMethod ? "CHANGE_PAYMENT_METHOD" : "START_FLOW",
       );
+      if (launched) paymentInvitationPendingRef.current = false;
       void send(clean, { paymentAlreadyLaunched: launched });
       return;
     }

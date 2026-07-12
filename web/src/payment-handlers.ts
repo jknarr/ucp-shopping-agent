@@ -81,6 +81,25 @@ export function isPaymentRequest(text: string): boolean {
   );
 }
 
+export function isPaymentInvitation(text: string): boolean {
+  const normalized = text.trim().toLowerCase();
+  return (
+    /\b(would you like|do you want|are you ready)\b[^.!?]*\b(pay|payment|checkout)\b/.test(
+      normalized,
+    ) ||
+    /\b(proceed|continue|move forward|go ahead)\b[^.!?]*\b(pay|payment|checkout)\b/.test(
+      normalized,
+    )
+  );
+}
+
+export function isAffirmativeResponse(text: string): boolean {
+  const normalized = text.trim().toLowerCase();
+  return /^(yes|yep|yeah|yup|sure|ok|okay|absolutely|definitely|affirmative|sounds good|that works|please do|go ahead|do it|let'?s do it|i would|i'?d like to|proceed|continue|ready)( please)?[.!]?$/i.test(
+    normalized,
+  );
+}
+
 export function shouldAutoLaunchDeferredPayment(coarsePointer: boolean): boolean {
   return !coarsePointer;
 }
