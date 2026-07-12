@@ -57,6 +57,16 @@ export function isPaymentMethodChangeRequest(text: string): boolean {
 
 export function isPaymentRequest(text: string): boolean {
   const normalized = text.trim().toLowerCase();
+  // With an existing checkout, these pronouns refer to the current order.
+  // Keep this narrow so a named-product request such as "buy the tent" still
+  // reaches the agent as a cart mutation instead of opening payment.
+  if (
+    /^(yes[, ]+)?(please )?(buy|purchase|order) (it|this)( please)?[.!]?$/i.test(
+      normalized,
+    )
+  ) {
+    return true;
+  }
   if (
     /\b(not ready|do not|don't|dont|cancel|stop|wait|hold off|not yet)\b/.test(normalized) ||
     /\b(add|remove|delete|quantity|qty|replace|another item|also want|buy|get)\b/.test(normalized) ||

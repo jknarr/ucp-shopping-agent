@@ -17,6 +17,9 @@ for (const request of [
   "nothing else",
   "that's all",
   "proceed",
+  "buy it",
+  "purchase this",
+  "yes, buy it please",
 ]) {
   assert.equal(isPaymentRequest(request), true, `expected payment request: ${request}`);
 }
@@ -25,6 +28,7 @@ for (const request of [
   "not ready to pay",
   "add another item",
   "I also want to buy the book",
+  "buy the tent",
   "continue shopping",
   "what is the total?",
 ]) {
