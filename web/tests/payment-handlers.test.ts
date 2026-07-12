@@ -5,8 +5,25 @@ import {
   isPaymentMethodChangeRequest,
   isPaymentRequest,
   isPurchaseConfirmation,
+  requiresExplicitPaymentButton,
   shouldAutoLaunchDeferredPayment,
 } from "../src/payment-handlers.ts";
+
+assert.equal(
+  requiresExplicitPaymentButton(
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 Version/18.5 Safari/605.1.15",
+    false,
+  ),
+  true,
+);
+assert.equal(
+  requiresExplicitPaymentButton(
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/138.0.0.0 Safari/537.36",
+    false,
+  ),
+  false,
+);
+assert.equal(requiresExplicitPaymentButton("mobile browser", true), true);
 
 for (const invitation of [
   "Would you like to proceed to payment?",

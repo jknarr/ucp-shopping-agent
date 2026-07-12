@@ -8,6 +8,7 @@ import {
   isPaymentRequest,
   isPurchaseConfirmation,
   loadPaymentHandlers,
+  requiresExplicitPaymentButton,
   shouldAutoLaunchDeferredPayment,
   type PaymentHandlerDescriptor,
   type PaymentSelection,
@@ -230,7 +231,13 @@ export function App() {
       });
   }, []);
 
-  async function send(text: string, options: { paymentAlreadyLaunched?: boolean } = {}) {
+  async function send(
+    text: string,
+    options: {
+      paymentAlreadyLaunched?: boolean;
+      paymentButtonRequested?: boolean;
+    } = {},
+  ) {
     const clean = text.trim();
     if (!clean || loading) return;
     setInput("");
@@ -246,7 +253,20 @@ export function App() {
       if (!response.ok) throw new Error(body.detail ?? `Agent returned ${response.status}`);
       setSessionId(body.session_id ?? null);
       if (body.ui && "checkout" in body.ui) checkoutRef.current = body.ui.checkout;
-      const paymentAction = body.ui?.kind === "payment_action" ? body.ui : null;
+      const modelPaymentAction = body.ui?.kind === "payment_action" ? body.ui : null;
+      const paymentAction: Extract<UiPayload, { kind: "payment_action" }> | null =
+        modelPaymentAction ??
+        (options.paymentButtonRequested && checkoutRef.current && paymentHandlerNamesRef.current[0]
+          ? {
+              kind: "payment_action",
+              checkout: checkoutRef.current,
+              action: {
+                handler: paymentHandlerNamesRef.current[0],
+                label: "Select payment method",
+                action_code: "START_FLOW",
+              },
+            }
+          : null);
       const allowDeferredAutoLaunch = shouldAutoLaunchDeferredPayment(
         window.matchMedia("(pointer: coarse)").matches,
       );
@@ -415,6 +435,15 @@ export function App() {
     ) {
       return false;
     }
+    if (
+      requiresExplicitPaymentButton(
+        window.navigator.userAgent,
+        window.matchMedia("(pointer: coarse)").matches,
+      )
+    ) {
+      directPaymentLaunchRef.current = { text: clean, launched: false };
+      return true;
+    }
     const launched = launchPayment(
       checkout,
       handlerName,
@@ -439,7 +468,10 @@ export function App() {
     const directLaunch = directPaymentLaunchRef.current;
     directPaymentLaunchRef.current = null;
     if (directLaunch?.text === clean) {
-      void send(clean, { paymentAlreadyLaunched: directLaunch.launched });
+      void send(clean, {
+        paymentAlreadyLaunched: directLaunch.launched,
+        paymentButtonRequested: !directLaunch.launched,
+      });
       return;
     }
     const checkout = pendingPaymentReview?.checkout ?? checkoutRef.current;
