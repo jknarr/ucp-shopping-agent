@@ -316,6 +316,7 @@ export function App() {
     checkout: Checkout,
     handlerName: string,
     actionCode: "START_FLOW" | "CHANGE_PAYMENT_METHOD",
+    deferredConversationText?: string,
   ): boolean {
     const handler = getPaymentHandler(handlerName);
     if (!handler || !["requires_escalation", "ready_for_complete"].includes(checkout.status)) {
@@ -339,32 +340,54 @@ export function App() {
           checkout,
           selection,
         };
+        if (deferredConversationText) setInput("");
         setPendingPaymentReview(review);
-        setMessages((current) => [...current, {
-          id: crypto.randomUUID(),
-          role: "assistant",
-          text:
-            actionCode === "CHANGE_PAYMENT_METHOD"
-              ? "The payment handler returned your updated selection. Review it here before I replace the payment on the checkout."
-              : "The payment handler returned your selection. Review it here before I attach it to the checkout.",
-          ui: review,
-        }]);
+        setMessages((current) => [
+          ...current,
+          ...(deferredConversationText
+            ? [{
+                id: crypto.randomUUID(),
+                role: "user" as const,
+                text: deferredConversationText,
+              }]
+            : []),
+          {
+            id: crypto.randomUUID(),
+            role: "assistant",
+            text:
+              actionCode === "CHANGE_PAYMENT_METHOD"
+                ? "The payment handler returned your updated selection. Review it here before I replace the payment on the checkout."
+                : "The payment handler returned your selection. Review it here before I attach it to the checkout.",
+            ui: review,
+          },
+        ]);
       })
       .catch((error: Error) => {
-        setMessages((current) => [...current, {
-          id: crypto.randomUUID(),
-          role: "assistant",
-          text: `The browser could not open the payment handler automatically: ${error.message} Use the button below to select a payment method.`,
-          ui: {
-            kind: "payment_action",
-            checkout,
-            action: {
-              handler: handlerName,
-              label: "Payment",
-              action_code: actionCode,
+        if (deferredConversationText) setInput("");
+        setMessages((current) => [
+          ...current,
+          ...(deferredConversationText
+            ? [{
+                id: crypto.randomUUID(),
+                role: "user" as const,
+                text: deferredConversationText,
+              }]
+            : []),
+          {
+            id: crypto.randomUUID(),
+            role: "assistant",
+            text: `The browser could not open the payment handler automatically: ${error.message} Use the button below to select a payment method.`,
+            ui: {
+              kind: "payment_action",
+              checkout,
+              action: {
+                handler: handlerName,
+                label: "Payment",
+                action_code: actionCode,
+              },
             },
           },
-        }]);
+        ]);
       });
     return true;
   }
@@ -449,6 +472,7 @@ export function App() {
       checkout,
       handlerName,
       changePaymentMethod ? "CHANGE_PAYMENT_METHOD" : "START_FLOW",
+      clean,
     );
     directPaymentLaunchRef.current = { text: clean, launched };
     if (launched) paymentInvitationPendingRef.current = false;
@@ -469,9 +493,10 @@ export function App() {
     const directLaunch = directPaymentLaunchRef.current;
     directPaymentLaunchRef.current = null;
     if (directLaunch?.text === clean) {
+      if (directLaunch.launched) return;
       void send(clean, {
-        paymentAlreadyLaunched: directLaunch.launched,
-        paymentButtonRequested: !directLaunch.launched,
+        paymentAlreadyLaunched: false,
+        paymentButtonRequested: true,
       });
       return;
     }
@@ -491,9 +516,12 @@ export function App() {
         checkout,
         handlerName,
         changePaymentMethod ? "CHANGE_PAYMENT_METHOD" : "START_FLOW",
+        clean,
       );
       if (launched) paymentInvitationPendingRef.current = false;
-      void send(clean, { paymentAlreadyLaunched: launched });
+      if (!launched) {
+        void send(clean, { paymentButtonRequested: true });
+      }
       return;
     }
     void send(clean);
